@@ -38,7 +38,9 @@ class FilterClauseQueryApplier(QueryApplier):
 
     @property
     def column(self) -> postgresquery.Expression:
-        return expression_for_path(self._path, operator=self.operator)
+        return expression_for_path(
+            self._path, operator=self.operator, value=self._value
+        )
 
     @property
     def value(

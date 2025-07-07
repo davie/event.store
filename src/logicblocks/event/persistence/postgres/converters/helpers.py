@@ -9,23 +9,40 @@ from logicblocks.event.persistence.postgres import query as postgresquery
 def expression_for_path(
     path: genericquery.Path,
     operator: postgresquery.Operator | None = None,
+    value: str | int | float | bool | None = None,
+    for_function: bool = False,
 ) -> postgresquery.Expression:
     if path.is_nested():
-        function_name = (
-            "jsonb_extract_path_text"
-            if operator
-            and operator.comparison_type == postgresquery.ComparisonType.TEXT
-            else "jsonb_extract_path"
-        )
-        arguments = [
-            postgresquery.ColumnReference(field=path.top_level),
-            *[
-                postgresquery.Constant(value=sub_level)
-                for sub_level in path.sub_levels
-            ],
-        ]
-        return postgresquery.FunctionApplication(
-            function_name=function_name, arguments=arguments
+        # Choose between JSON extraction (->) and text extraction (->>)
+        # based on the context and operator type
+        if for_function:
+            # Functions need JSON extraction without text extraction
+            # because they handle their own casting
+            text_extract = False
+            cast_type = None
+        elif operator == postgresquery.Operator.CONTAINS:
+            # CONTAINS operations need JSON extraction to compare JSON values
+            text_extract = False
+            cast_type = None
+        else:
+            # Most operations use text extraction for cleaner comparisons
+            text_extract = True
+
+            # Determine cast type based on value type for text extraction
+            cast_type = None
+            if value is not None:
+                if isinstance(value, bool):
+                    cast_type = "boolean"
+                elif isinstance(value, int):
+                    cast_type = "integer"
+                elif isinstance(value, float):
+                    cast_type = "numeric"
+
+        return postgresquery.JsonPathExpression(
+            column=path.top_level,
+            path=list(path.sub_levels),
+            text_extract=text_extract,
+            cast_type=cast_type,
         )
     else:
         return postgresquery.ColumnReference(field=path.top_level)
@@ -58,17 +75,12 @@ def value_for_path(
             Jsonb(value.serialise()),
         )
     elif path.is_nested():
-        if operator.comparison_type == postgresquery.ComparisonType.TEXT:
-            return postgresquery.Constant(value)
+        if operator == postgresquery.Operator.CONTAINS:
+            # CONTAINS operations need JSON values for comparison
+            return postgresquery.Constant(Jsonb(value))
         else:
-            expression = postgresquery.Constant(value)
-            if isinstance(value, str):
-                expression = postgresquery.Cast(
-                    expression=expression, typename="text"
-                )
-            return postgresquery.FunctionApplication(
-                function_name="to_jsonb", arguments=[expression]
-            )
+            # Most operations use text extraction, so values can be used directly
+            return postgresquery.Constant(value)
     else:
         return postgresquery.Constant(value)
 

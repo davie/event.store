@@ -24,7 +24,9 @@ class SimilarityFunctionQueryApplier(QueryApplier):
                 function_name="similarity",
                 arguments=[
                     postgresquery.Cast(
-                        expression=expression_for_path(self._function.left),
+                        expression=expression_for_path(
+                            self._function.left, for_function=True
+                        ),
                         typename="text",
                     ),
                     postgresquery.Constant(self._function.right),

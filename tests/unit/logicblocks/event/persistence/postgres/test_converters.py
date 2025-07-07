@@ -3,6 +3,7 @@ from typing import Any, cast
 
 import pytest
 from psycopg import abc, sql
+from psycopg.types.json import Jsonb
 
 from logicblocks.event.persistence.postgres import (
     ParameterisedQuery,
@@ -115,8 +116,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) = "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer = %s',
             ["value", 5],
         )
 
@@ -138,9 +138,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) = '
-            '"to_jsonb"(CAST(%s AS "text"))',
+            'SELECT * FROM "projections" WHERE "state"->>%s = %s',
             ["value", "test"],
         )
 
@@ -164,11 +162,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) IN ('
-            '"to_jsonb"(CAST(%s AS "text")), '
-            '"to_jsonb"(CAST(%s AS "text"))'
-            ")",
+            'SELECT * FROM "projections" WHERE "state"->>%s IN (%s, %s)',
             ["value", value_1, value_2],
         )
 
@@ -196,8 +190,8 @@ class TestPostgresQueryConverterQueryConversion:
 
         assert parameterised_query_to_string(converted) == (
             'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) = "to_jsonb"(%s) '
-            'AND "jsonb_extract_path"("state", %s, %s, %s) = "to_jsonb"(%s)',
+            'WHERE ("state"->>%s)::integer = %s '
+            'AND ("state"->%s->%s->>%s)::integer = %s',
             ["value_1", 5, "value_2", 0, "value_3", 6],
         )
 
@@ -241,8 +235,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) != "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer != %s',
             ["value_1", 5],
         )
 
@@ -286,8 +279,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) > "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer > %s',
             ["value_1", 5],
         )
 
@@ -331,8 +323,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) >= "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer >= %s',
             ["value_1", 5],
         )
 
@@ -376,8 +367,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) < "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer < %s',
             ["value_1", 5],
         )
 
@@ -421,8 +411,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path"("state", %s) <= "to_jsonb"(%s)',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer <= %s',
             ["value_1", 5],
         )
 
@@ -478,8 +467,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'ORDER BY "jsonb_extract_path"("state", %s) ASC',
+            'SELECT * FROM "projections" ORDER BY "state"->>%s ASC',
             ["value_1"],
         )
 
@@ -503,9 +491,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" ORDER BY '
-            '"jsonb_extract_path"("state", %s) DESC, '
-            '"jsonb_extract_path"("state", %s) ASC',
+            'SELECT * FROM "projections" ORDER BY "state"->>%s DESC, "state"->>%s ASC',
             ["value_1", "value_2"],
         )
 
@@ -532,7 +518,7 @@ class TestPostgresQueryConverterQueryConversion:
             "SELECT "
             "*, "
             '"similarity"('
-            'CAST("jsonb_extract_path"("state", %s) AS "text"), %s'
+            'CAST("state"->%s AS "text"), %s'
             ') AS "value_score" '
             'FROM "projections" '
             'ORDER BY "value_score" DESC',
@@ -931,13 +917,16 @@ class TestPostgresQueryConverterQueryConversion:
 
         converted = converter.convert_query(query)
 
-        assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            "WHERE "
-            '"jsonb_extract_path"("state", %s) @> '
-            '"to_jsonb"(CAST(%s AS "text"))',
-            ["arr", value],
-        )
+        result_sql, result_params = parameterised_query_to_string(converted)
+        expected_sql = 'SELECT * FROM "projections" WHERE "state"->%s @> %s'
+        expected_params = ["arr", Jsonb(value)]
+
+        assert result_sql == expected_sql
+        assert len(result_params) == len(expected_params)
+        assert result_params[0] == expected_params[0]
+        # Compare the Jsonb content directly since Jsonb.__eq__ might have issues
+        assert isinstance(result_params[1], Jsonb)
+        assert result_params[1].obj == value
 
     def test_converts_string_regex_query_on_nested_attribute(self):
         converter = query_converter_with_default_converters()
@@ -955,10 +944,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            "SELECT * FROM "
-            '"projections" WHERE '
-            '"jsonb_extract_path_text"("state", %s) ~ '
-            "%s",
+            'SELECT * FROM "projections" WHERE "state"->>%s ~ %s',
             ["field", "regex.*"],
         )
 
@@ -980,7 +966,6 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path_text"("state", %s) ~ %s',
+            'SELECT * FROM "projections" WHERE "state"->>%s ~ %s',
             ["description", "world$"],
         )
