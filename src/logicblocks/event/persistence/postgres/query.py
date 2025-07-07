@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum, StrEnum
-from typing import Any, Self, TypedDict, Unpack, cast
+from typing import Any, LiteralString, Self, TypedDict, Unpack, cast
 
 from psycopg import sql
 
@@ -161,6 +161,46 @@ class Constant(Expression):
         params = [self.value]
 
         return operand_sql, params
+
+
+@dataclass(frozen=True, kw_only=True)
+class JsonPathExpression(Expression):
+    column: str
+    path: Sequence[str | int]
+    text_extract: bool = False
+    cast_type: str | None = None
+
+    def to_fragment(self) -> ParameterisedQueryFragment:
+        if not self.path:
+            return (
+                sql.SQL("{column}").format(column=sql.Identifier(self.column))
+            ), []
+
+        column_ref = sql.SQL("{column}").format(
+            column=sql.Identifier(self.column)
+        )
+
+        if len(self.path) == 1 and self.text_extract:
+            column_ref = column_ref + sql.SQL("->>%s")
+        elif self.text_extract and len(self.path) > 1:
+            for _ in self.path[:-1]:
+                column_ref = column_ref + sql.SQL("->%s")
+            column_ref = column_ref + sql.SQL("->>%s")
+        else:
+            for _ in self.path:
+                column_ref = column_ref + sql.SQL("->%s")
+
+        if self.cast_type:
+            column_ref = (
+                sql.SQL("(")
+                + column_ref
+                + sql.SQL(")::{cast_type}").format(
+                    cast_type=sql.SQL(cast(LiteralString, self.cast_type))
+                )
+            )
+
+        params = list(self.path)
+        return column_ref, params
 
 
 type OrderByColumn = str | ColumnReference
