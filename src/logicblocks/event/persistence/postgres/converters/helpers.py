@@ -26,9 +26,7 @@ def expression_for_path(
             if value is not None:
                 if isinstance(value, bool):
                     cast_type = "boolean"
-                elif isinstance(value, int):
-                    cast_type = "integer"
-                elif isinstance(value, float):
+                elif isinstance(value, int | float):
                     cast_type = "numeric"
 
         return postgresquery.JsonPathExpression(
