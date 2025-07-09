@@ -180,6 +180,7 @@ class Operator(StrEnum):
     LESS_THAN_OR_EQUAL = "<="
     IN = "IN"
     CONTAINS = "@>"
+    CONTAINS_ANY = "?|"
     REGEX_MATCHES = "~"
     NOT_REGEX_MATCHES = "!~"
 

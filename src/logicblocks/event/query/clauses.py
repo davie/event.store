@@ -17,6 +17,7 @@ class Operator(StrEnum):
     LESS_THAN_OR_EQUAL = "less_than_or_equal"
     IN = "in"
     CONTAINS = "contains"
+    CONTAINS_ANY = "contains_any"
     REGEX_MATCHES = "regex_matches"
     NOT_REGEX_MATCHES = "not_regex_matches"
 

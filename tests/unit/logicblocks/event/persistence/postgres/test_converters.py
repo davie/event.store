@@ -939,6 +939,31 @@ class TestPostgresQueryConverterQueryConversion:
             ["arr", value],
         )
 
+    def test_converts_string_array_contains_any_query_on_nested_attribute(
+        self,
+    ):
+        converter = query_converter_with_default_converters()
+        value1 = data.random_ascii_alphanumerics_string(10)
+        value2 = data.random_ascii_alphanumerics_string(10)
+        query = Search(
+            filters=[
+                FilterClause(
+                    operator=Operator.CONTAINS_ANY,
+                    field=Path("state", "arr"),
+                    value=[value1, value2],
+                )
+            ]
+        )
+
+        converted = converter.convert_query(query)
+
+        assert parameterised_query_to_string(converted) == (
+            'SELECT * FROM "projections" '
+            "WHERE "
+            '"jsonb_extract_path"("state", %s) ?| %s',
+            ["arr", [value1, value2]],
+        )
+
     def test_converts_string_regex_query_on_nested_attribute(self):
         converter = query_converter_with_default_converters()
         value = "regex.*"

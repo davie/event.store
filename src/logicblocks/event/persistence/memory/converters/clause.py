@@ -74,6 +74,10 @@ class FilterClauseConverter[R: Identifiable](ClauseConverter[R, FilterClause]):
                 return resolved_value in comparison_value
             case Operator.CONTAINS:
                 return comparison_value in resolved_value
+            case Operator.CONTAINS_ANY:
+                return any(
+                    value in resolved_value for value in comparison_value
+                )
             case Operator.REGEX_MATCHES:
                 return regex_matches(comparison_value, resolved_value)
             case Operator.NOT_REGEX_MATCHES:

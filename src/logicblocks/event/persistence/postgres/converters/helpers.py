@@ -58,7 +58,10 @@ def value_for_path(
             Jsonb(value.serialise()),
         )
     elif path.is_nested():
-        if operator.comparison_type == postgresquery.ComparisonType.TEXT:
+        if (
+            operator.comparison_type == postgresquery.ComparisonType.TEXT
+            or operator == postgresquery.Operator.CONTAINS_ANY
+        ):
             return postgresquery.Constant(value)
         else:
             expression = postgresquery.Constant(value)

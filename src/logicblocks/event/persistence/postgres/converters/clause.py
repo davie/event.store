@@ -44,7 +44,11 @@ class FilterClauseQueryApplier(QueryApplier):
     def value(
         self,
     ) -> postgresquery.Expression | Sequence[postgresquery.Expression]:
-        if is_multi_valued(self._value):
+        if self._operator == genericquery.Operator.CONTAINS_ANY:
+            return value_for_path(
+                self._value, self._path, operator=self.operator
+            )
+        elif is_multi_valued(self._value):
             return [
                 value_for_path(value, self._path, operator=self.operator)
                 for value in self._value
@@ -81,6 +85,7 @@ class FilterClauseConverter(ClauseConverter[genericquery.FilterClause]):
                 genericquery.Operator.GREATER_THAN_OR_EQUAL: postgresquery.Operator.GREATER_THAN_OR_EQUAL,
                 genericquery.Operator.IN: postgresquery.Operator.IN,
                 genericquery.Operator.CONTAINS: postgresquery.Operator.CONTAINS,
+                genericquery.Operator.CONTAINS_ANY: postgresquery.Operator.CONTAINS_ANY,
                 genericquery.Operator.REGEX_MATCHES: postgresquery.Operator.REGEX_MATCHES,
                 genericquery.Operator.NOT_REGEX_MATCHES: postgresquery.Operator.NOT_REGEX_MATCHES,
             }

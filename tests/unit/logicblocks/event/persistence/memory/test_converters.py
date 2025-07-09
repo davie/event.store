@@ -862,6 +862,56 @@ class TestDelegatingQueryConverterDefaultClauseConverters:
 
         assert result_set.records == [projection_3]
 
+    def test_filter_on_list_contains_any_value(self):
+        converter = DelegatingQueryConverter().with_default_clause_converters()
+
+        value_to_filter1 = data.random_ascii_alphanumerics_string(10)
+        value_to_filter2 = data.random_ascii_alphanumerics_string(10)
+        other_value1 = data.random_ascii_alphanumerics_string(10)
+        other_value2 = data.random_ascii_alphanumerics_string(10)
+        clause = FilterClause(
+            Operator.CONTAINS_ANY,
+            Path("state", "value_2"),
+            [value_to_filter1, value_to_filter2],
+        )
+
+        transformer = converter.convert_clause(clause)
+
+        projection_1 = (
+            MappingProjectionBuilder()
+            .with_state({"value_1": 5, "value_2": [other_value1]})
+            .build()
+        )
+        projection_2 = (
+            MappingProjectionBuilder()
+            .with_state(
+                {"value_1": 15, "value_2": [other_value1, value_to_filter1]}
+            )
+            .build()
+        )
+        projection_3 = (
+            MappingProjectionBuilder()
+            .with_state(
+                {"value_1": 25, "value_2": [other_value2, value_to_filter2]}
+            )
+            .build()
+        )
+        projection_4 = (
+            MappingProjectionBuilder()
+            .with_state(
+                {"value_1": 35, "value_2": [other_value1, other_value2]}
+            )
+            .build()
+        )
+
+        result_set = transformer(
+            ResultSet.of(
+                projection_1, projection_2, projection_3, projection_4
+            )
+        )
+
+        assert result_set.records == [projection_2, projection_3]
+
     def test_filter_on_regex_matches_value(self):
         converter = DelegatingQueryConverter().with_default_clause_converters()
 
