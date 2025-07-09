@@ -206,7 +206,7 @@ class JsonPathExpression(Expression):
 type OrderByColumn = str | ColumnReference
 
 
-class ComparisonType(Enum):
+class ExtractionType(Enum):
     TEXT = "TEXT"
     JSONB = "JSONB"
 
@@ -225,13 +225,10 @@ class Operator(StrEnum):
     NOT_REGEX_MATCHES = "!~"
 
     @property
-    def comparison_type(self) -> ComparisonType:
-        if (
-            self == Operator.REGEX_MATCHES
-            or self == Operator.NOT_REGEX_MATCHES
-        ):
-            return ComparisonType.TEXT
-        return ComparisonType.JSONB
+    def extraction_type(self) -> ExtractionType:
+        if self in (Operator.CONTAINS, Operator.CONTAINS_ANY):
+            return ExtractionType.JSONB
+        return ExtractionType.TEXT
 
 
 class SetQuantifier(StrEnum):

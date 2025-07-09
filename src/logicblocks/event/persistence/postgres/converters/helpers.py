@@ -16,7 +16,7 @@ def expression_for_path(
         if for_function:
             text_extract = False
             cast_type = None
-        elif operator == postgresquery.Operator.CONTAINS:
+        elif operator and operator.extraction_type == postgresquery.ExtractionType.JSONB:
             text_extract = False
             cast_type = None
         else:
