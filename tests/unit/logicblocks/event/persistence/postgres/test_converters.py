@@ -1011,8 +1011,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" '
-            'WHERE "jsonb_extract_path_text"("state", %s) !~ %s',
+            'SELECT * FROM "projections" WHERE "state"->>%s !~ %s',
             ["description", "world$"],
         )
 
@@ -1032,9 +1031,6 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            "SELECT * FROM "
-            '"projections" WHERE '
-            '"jsonb_extract_path_text"("state", %s) !~ '
-            "%s",
+            'SELECT * FROM "projections" WHERE "state"->>%s !~ %s',
             ["field", "regex.*"],
         )
