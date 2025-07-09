@@ -6,56 +6,71 @@ from logicblocks.event import query as genericquery
 from logicblocks.event.persistence.postgres import query as postgresquery
 
 
-def expression_for_path(
+def _infer_cast_type(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "boolean"
+    elif isinstance(value, int | float):
+        return "numeric"
+    return None
+
+
+def expression_for_filter(
     path: genericquery.Path,
-    operator: postgresquery.Operator | None = None,
+    operator: postgresquery.Operator,
     value: str | int | float | bool | None = None,
-    for_function: bool = False,
 ) -> postgresquery.Expression:
-    if path.is_nested():
-        if for_function:
-            text_extract = False
-            cast_type = None
-        elif operator and operator.extraction_type == postgresquery.ExtractionType.JSONB:
-            text_extract = False
-            cast_type = None
-        else:
-            text_extract = True
+    if not path.is_nested():
+        return postgresquery.ColumnReference(field=path.top_level)
 
-            cast_type = None
-            if value is not None:
-                if isinstance(value, bool):
-                    cast_type = "boolean"
-                elif isinstance(value, int | float):
-                    cast_type = "numeric"
-
+    if operator.extraction_type == postgresquery.ExtractionType.JSONB:
         return postgresquery.JsonPathExpression(
             column=path.top_level,
             path=list(path.sub_levels),
-            text_extract=text_extract,
-            cast_type=cast_type,
+            text_extract=False,
+            cast_type=None,
         )
-    else:
+
+    cast_type = _infer_cast_type(value)
+    return postgresquery.JsonPathExpression(
+        column=path.top_level,
+        path=list(path.sub_levels),
+        text_extract=True,
+        cast_type=cast_type,
+    )
+
+
+def expression_for_sort(path: genericquery.Path) -> postgresquery.Expression:
+    if not path.is_nested():
         return postgresquery.ColumnReference(field=path.top_level)
+
+    return postgresquery.JsonPathExpression(
+        column=path.top_level,
+        path=list(path.sub_levels),
+        text_extract=True,
+        cast_type=None,
+    )
+
+
+def expression_for_function_path(
+    path: genericquery.Path,
+) -> postgresquery.Expression:
+    if not path.is_nested():
+        return postgresquery.ColumnReference(field=path.top_level)
+
+    return postgresquery.JsonPathExpression(
+        column=path.top_level,
+        path=list(path.sub_levels),
+        text_extract=False,
+        cast_type=None,
+    )
 
 
 def expression_for_function(
     function: genericquery.Function,
 ) -> postgresquery.Expression:
     return postgresquery.ColumnReference(field=function.alias)
-
-
-def expression_for_field(
-    field: genericquery.Path | genericquery.Function,
-    operator: postgresquery.Operator | None = None,
-) -> postgresquery.Expression:
-    match field:
-        case genericquery.Path():
-            return expression_for_path(field, operator=operator)
-        case genericquery.Function():
-            return expression_for_function(field)
-        case _:  # pragma: no cover
-            raise ValueError(f"Unsupported field type: {type(field)}")
 
 
 def value_for_path(

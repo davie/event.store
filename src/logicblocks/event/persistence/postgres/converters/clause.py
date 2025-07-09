@@ -10,8 +10,9 @@ from ..query import QueryApplier
 from ..settings import TableSettings
 from .appliers import CombinedQueryApplier
 from .helpers import (
-    expression_for_field,
-    expression_for_path,
+    expression_for_filter,
+    expression_for_function,
+    expression_for_sort,
     is_multi_valued,
     value_for_path,
 )
@@ -38,7 +39,7 @@ class FilterClauseQueryApplier(QueryApplier):
 
     @property
     def column(self) -> postgresquery.Expression:
-        return expression_for_path(
+        return expression_for_filter(
             self._path, operator=self.operator, value=self._value
         )
 
@@ -117,7 +118,15 @@ class SortClauseQueryApplier(QueryApplier):
         self,
         sort_field: genericquery.SortField,
     ) -> postgresquery.SortBy:
-        expression = expression_for_field(sort_field.field)
+        match sort_field.field:
+            case genericquery.Path():
+                expression = expression_for_sort(sort_field.field)
+            case genericquery.Function():
+                expression = expression_for_function(sort_field.field)
+            case _:  # pragma: no cover
+                raise ValueError(
+                    f"Unsupported field type: {type(sort_field.field)}"
+                )
         direction = self.sort_direction(sort_field.order)
 
         return postgresquery.SortBy(

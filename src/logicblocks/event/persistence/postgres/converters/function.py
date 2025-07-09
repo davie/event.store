@@ -2,7 +2,7 @@ from typing import Self
 
 import logicblocks.event.query as genericquery
 from logicblocks.event.persistence.postgres.converters.helpers import (
-    expression_for_path,
+    expression_for_function_path,
 )
 from logicblocks.event.types import Converter
 
@@ -24,8 +24,8 @@ class SimilarityFunctionQueryApplier(QueryApplier):
                 function_name="similarity",
                 arguments=[
                     postgresquery.Cast(
-                        expression=expression_for_path(
-                            self._function.left, for_function=True
+                        expression=expression_for_function_path(
+                            self._function.left
                         ),
                         typename="text",
                     ),
