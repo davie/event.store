@@ -190,8 +190,8 @@ class TestPostgresQueryConverterQueryConversion:
 
         assert parameterised_query_to_string(converted) == (
             'SELECT * FROM "projections" '
-            'WHERE ("state"->>%s)::integer = %s '
-            'AND ("state"->%s->%s->>%s)::integer = %s',
+            'WHERE ("state"->>%s)::numeric = %s '
+            'AND ("state"->%s->%s->>%s)::numeric = %s',
             ["value_1", 5, "value_2", 0, "value_3", 6],
         )
 
@@ -235,7 +235,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer != %s',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::numeric != %s',
             ["value_1", 5],
         )
 
@@ -279,7 +279,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer > %s',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::numeric > %s',
             ["value_1", 5],
         )
 
@@ -323,7 +323,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer >= %s',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::numeric >= %s',
             ["value_1", 5],
         )
 
@@ -367,7 +367,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer < %s',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::numeric < %s',
             ["value_1", 5],
         )
 
@@ -411,7 +411,7 @@ class TestPostgresQueryConverterQueryConversion:
         converted = converter.convert_query(query)
 
         assert parameterised_query_to_string(converted) == (
-            'SELECT * FROM "projections" WHERE ("state"->>%s)::integer <= %s',
+            'SELECT * FROM "projections" WHERE ("state"->>%s)::numeric <= %s',
             ["value_1", 5],
         )
 
